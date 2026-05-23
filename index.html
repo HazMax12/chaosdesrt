@@ -36,7 +36,7 @@ canvas { position: fixed; top: 0; left: 0; z-index: 0; }
 
 .lobby-content {
   position: relative; z-index: 1;
-  display: flex; flex-direction: column; align-items: center; gap: 22px;
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
   padding: 40px;
 }
 .logo {
@@ -119,6 +119,39 @@ canvas { position: fixed; top: 0; left: 0; z-index: 0; }
   gap: 6px 20px; font-size: 12px; letter-spacing: 1px;
   color: rgba(255,255,255,.3); text-align: center; margin-top: 5px;
 }
+
+/* ─── PUBLIC LOBBIES ─── */
+#lobbyList { width: 360px; }
+#lobbyListBody {
+  display: flex; flex-direction: column; gap: 6px;
+  max-height: 170px; overflow-y: auto; padding-right: 4px;
+}
+#lobbyListBody::-webkit-scrollbar { width: 4px; }
+#lobbyListBody::-webkit-scrollbar-thumb { background: rgba(255,160,0,.3); border-radius: 2px; }
+.lobby-row {
+  display: flex; justify-content: space-between; align-items: center;
+  background: rgba(0,0,0,.4); border: 1px solid rgba(255,160,0,.2);
+  padding: 8px 12px; cursor: pointer; transition: all .15s;
+}
+.lobby-row:hover { border-color: rgba(255,160,0,.6); background: rgba(255,160,0,.08); }
+.lobby-info { display: flex; flex-direction: column; gap: 2px; }
+.lobby-title { font-family: 'Orbitron'; font-size: 11px; color: #ffcc66; font-weight: 700; }
+.lobby-meta { font-size: 10px; color: rgba(255,255,255,.4); letter-spacing: 1px; }
+.lobby-players { font-size: 9px; color: rgba(255,255,255,.25); letter-spacing: 1px; }
+.lobby-join { font-family: 'Orbitron'; font-size: 10px; color: #ffaa33; }
+
+/* ─── PAUSE MENU ─── */
+#pauseMenu {
+  position: fixed; inset: 0; z-index: 90;
+  display: none; align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+  background: rgba(10,8,6,.82); backdrop-filter: blur(5px);
+}
+.pause-title {
+  font-family: 'Orbitron'; font-size: clamp(28px, 6vw, 48px); font-weight: 900;
+  color: #ffaa33; letter-spacing: 8px; margin-bottom: 10px;
+  text-shadow: 0 0 30px rgba(255,160,0,.4);
+}
+.pause-btn { width: 280px; }
 
 /* ─── HUD ─── */
 #hud { position: fixed; inset: 0; z-index: 50; pointer-events: none; }
@@ -277,6 +310,8 @@ canvas { position: fixed; top: 0; left: 0; z-index: 0; }
     <div class="logo">CH<span class="logo-r">A</span>OS</div>
     <div class="subtitle">DESERT ARENA</div>
 
+    <input id="nameInput" class="room-input" placeholder="ENTER YOUR NAME" maxlength="16" autocomplete="off" spellcheck="false" style="width:360px;text-align:center;text-transform:none;letter-spacing:1px;font-size:13px;">
+
     <div class="lobby-panel">
       <button id="hostBtn" class="btn btn-primary">⬡ HOST GAME</button>
       <div class="divider"><span>OR</span></div>
@@ -294,6 +329,12 @@ canvas { position: fixed; top: 0; left: 0; z-index: 0; }
 
     <div id="status" class="status-text"></div>
     <button id="startBtn" class="btn btn-start" style="display:none">▶ START GAME</button>
+
+    <div id="lobbyList" style="display:none;">
+      <div style="font-family:'Orbitron';font-size:10px;letter-spacing:3px;color:rgba(255,180,50,.5);margin-bottom:8px;text-align:center;">PUBLIC LOBBIES</div>
+      <div id="lobbyListBody"></div>
+      <button id="refreshLobbies" class="btn btn-secondary" style="width:100%;margin-top:8px;font-size:11px;letter-spacing:2px;">REFRESH</button>
+    </div>
 
     <div class="controls-legend">
       <div>WASD — Move</div><div>MOUSE — Aim</div><div>CLICK — Shoot</div>
@@ -366,6 +407,15 @@ canvas { position: fixed; top: 0; left: 0; z-index: 0; }
   </div>
 </div>
 
+<!-- ─── PAUSE MENU ─── -->
+<div id="pauseMenu">
+  <div class="pause-title">PAUSED</div>
+  <button id="resumeBtn" class="btn btn-primary pause-btn">RESUME</button>
+  <button id="pauseCheatBtn" class="btn btn-secondary pause-btn">CHEAT MENU</button>
+  <button id="leaveBtn" class="btn btn-secondary pause-btn">LEAVE GAME</button>
+  <button id="quitBtn" class="btn btn-secondary pause-btn">QUIT</button>
+</div>
+
 <!-- ─── CHEAT MENU ─── -->
 <div id="cheatMenu">
   <h2>CHAOS ENGINE</h2>
@@ -408,7 +458,6 @@ canvas { position: fixed; top: 0; left: 0; z-index: 0; }
 
     <div class="cheat-section">
       <div class="cheat-section-title">Combat</div>
-      <div class="cheat-row"><label><span>God Mode</span><input type="checkbox" id="chGod"></label></div>
       <div class="cheat-row"><label><span>Infinite Ammo</span><input type="checkbox" id="chInfAmmo"></label></div>
       <div class="cheat-row"><label><span>Rapid Fire</span><input type="checkbox" id="chRapid"></label></div>
     </div>
@@ -440,7 +489,6 @@ function playSound(type) {
     const gain = audioCtx.createGain();
     const noise = audioCtx.createBufferSource();
     const noiseGain = audioCtx.createGain();
-    // noise burst
     const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.1, audioCtx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
@@ -449,7 +497,6 @@ function playSound(type) {
     noiseGain.gain.setValueAtTime(0.25, t);
     noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.08);
     noise.start(); noise.stop(t + 0.08);
-    // low thump
     osc.type = 'square';
     osc.frequency.setValueAtTime(120, t);
     osc.frequency.exponentialRampToValueAtTime(30, t + 0.12);
@@ -502,14 +549,14 @@ const S = {
   gameStarted: false,
 };
 
-const scores = new Map(); // id -> {kills, deaths}
+const scores = new Map();
 
 const cheats = {
   esp: true, skeleton: true, box: true, fill: false, name: true, tracer: false, chams: false,
   aimbot: false, aimbotFOV: 30, aimbotSmooth: 15,
   silentAim: false, silentAimFOV: 8,
   bhop: false, autoStrafe: false, infJump: false, speed: false, speedMult: 1.6, noclip: false,
-  god: false, infAmmo: false, rapidFire: false
+  infAmmo: false, rapidFire: false
 };
 
 function updateCheatsFromDOM() {
@@ -531,7 +578,6 @@ function updateCheatsFromDOM() {
   cheats.speed = document.getElementById('chSpeed').checked;
   cheats.speedMult = parseFloat(document.getElementById('chSpeedVal').value);
   cheats.noclip = document.getElementById('chNoclip').checked;
-  cheats.god = document.getElementById('chGod').checked;
   cheats.infAmmo = document.getElementById('chInfAmmo').checked;
   cheats.rapidFire = document.getElementById('chRapid').checked;
 }
@@ -575,16 +621,26 @@ const controls = new PointerLockControls(camera, renderer.domElement);
 const keys = {};
 let mouseDown = false;
 let jumpKeyHeld = false;
+let isPaused = false;
 
 window.addEventListener('keydown', e => {
   keys[e.code] = true;
   if (e.code === 'KeyR') tryReload();
+  if (e.code === 'Escape') {
+    e.preventDefault();
+    const cheatMenu = document.getElementById('cheatMenu');
+    if (cheatMenu.style.display === 'block') {
+      cheatMenu.style.display = 'none';
+    } else {
+      togglePause();
+    }
+  }
   if (e.code === 'ShiftRight') {
     e.preventDefault();
     const menu = document.getElementById('cheatMenu');
     if (menu.style.display === 'block') {
       menu.style.display = 'none';
-      if (S.phase === 'playing') controls.lock();
+      if (S.phase === 'playing' && !isPaused) controls.lock();
     } else {
       menu.style.display = 'block';
       controls.unlock();
@@ -615,14 +671,16 @@ renderer.domElement.addEventListener('mousedown', e => {
 renderer.domElement.addEventListener('mouseup', e => { if (e.button === 0) mouseDown = false; });
 
 document.getElementById('lockScreen').addEventListener('click', () => {
-  if (S.phase === 'playing' && document.getElementById('cheatMenu').style.display !== 'block') controls.lock();
+  if (S.phase === 'playing' && document.getElementById('cheatMenu').style.display !== 'block' && !isPaused) controls.lock();
 });
 
 document.addEventListener('pointerlockchange', () => {
   if (document.pointerLockElement === renderer.domElement) {
     document.getElementById('lockScreen').style.display = 'none';
+    document.getElementById('pauseMenu').style.display = 'none';
+    isPaused = false;
   } else {
-    if (S.phase === 'playing' && document.getElementById('cheatMenu').style.display !== 'block') {
+    if (S.phase === 'playing' && !isPaused && document.getElementById('cheatMenu').style.display !== 'block') {
       document.getElementById('lockScreen').style.display = 'flex';
     }
   }
@@ -630,7 +688,7 @@ document.addEventListener('pointerlockchange', () => {
 
 controls.addEventListener('lock', () => { document.getElementById('lockScreen').style.display='none'; });
 controls.addEventListener('unlock', () => {
-  if (S.phase === 'playing' && document.getElementById('cheatMenu').style.display !== 'block') {
+  if (S.phase === 'playing' && !isPaused && document.getElementById('cheatMenu').style.display !== 'block') {
     document.getElementById('lockScreen').style.display='flex';
   }
 });
@@ -779,12 +837,12 @@ for (let i = 0; i < 22; i++) {
   box(w, h, 1.5, x, h/2, z, stoneMat);
 }
 
-// Ramps (rotated boxes)
+// Ramps
 function ramp(w, h, d, x, y, z, rotY) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), stoneMat);
   mesh.position.set(x, y, z);
   mesh.rotation.y = rotY;
-  mesh.rotation.z = Math.PI / 8; // tilt
+  mesh.rotation.z = Math.PI / 8;
   mesh.castShadow = true; mesh.receiveShadow = true;
   mesh.userData.isFloor = false;
   mesh.userData.bounds = new THREE.Box3().setFromObject(mesh);
@@ -891,8 +949,6 @@ function moveAndCollide(oldPos, newPos) {
   if (cheats.noclip) return newPos;
   let pos = newPos.clone();
 
-  // --- Y Resolution ---
-  let yOverlap = false;
   for (const mesh of collidables) {
     const b = mesh.userData.bounds;
     if (!b) continue;
@@ -901,24 +957,19 @@ function moveAndCollide(oldPos, newPos) {
     if (pAABB.maxZ < b.min.z || pAABB.minZ > b.max.z) continue;
     
     const oldAABB = getPlayerAABB(oldPos);
-    // Landing
     if (oldAABB.minY >= b.max.y - 0.08 && pAABB.minY < b.max.y && vel.y <= 0) {
       pos.y = b.max.y + PLAYER_HEIGHT - 0.05;
       vel.y = 0;
       onGround = true;
       jumpsLeft = cheats.infJump ? 99 : 1;
       if (oldAABB.minY > b.max.y + 0.8) { spawnDust(pos.x, b.max.y, pos.z); playSound('land'); }
-      yOverlap = true;
     }
-    // Head bonk
     else if (oldAABB.maxY <= b.min.y + 0.08 && pAABB.maxY > b.min.y && vel.y > 0) {
       pos.y = b.min.y - 0.15;
       vel.y = 0;
-      yOverlap = true;
     }
   }
 
-  // --- X Resolution ---
   for (const mesh of collidables) {
     const b = mesh.userData.bounds;
     if (!b) continue;
@@ -935,7 +986,6 @@ function moveAndCollide(oldPos, newPos) {
     }
   }
 
-  // --- Z Resolution ---
   for (const mesh of collidables) {
     const b = mesh.userData.bounds;
     if (!b) continue;
@@ -1023,10 +1073,8 @@ function updatePhysics(dt) {
 
   const oldPos = camera.position.clone();
 
-  // Gravity
   vel.y -= GRAVITY * dt;
 
-  // Jump
   if (keys['Space']) {
     if (!jumpKeyHeld) {
       jumpKeyHeld = true;
@@ -1040,14 +1088,12 @@ function updatePhysics(dt) {
     }
   } else jumpKeyHeld = false;
 
-  // Slide
   if (isSliding) {
     slideTimer -= dt;
     vel.x *= 0.92; vel.z *= 0.92;
     if (slideTimer <= 0 || keys['Space'] || Math.hypot(vel.x, vel.z) < 2) isSliding = false;
   }
 
-  // Dash
   if (keys['ShiftLeft'] && dashTimer >= DASH_CD && !isSliding && (keys['KeyW']||keys['KeyA']||keys['KeyS']||keys['KeyD'])) {
     dashTimer = 0; isDashing = true;
     const dashDir = getMovementDirection();
@@ -1056,7 +1102,6 @@ function updatePhysics(dt) {
   }
   if (dashTimer > 0.35) isDashing = false;
 
-  // Horizontal
   const moveDir = getMovementDirection();
   const speedMult = (cheats.speed ? cheats.speedMult : 1.0);
 
@@ -1082,27 +1127,21 @@ function updatePhysics(dt) {
     }
   }
 
-  // Proposed position
   let newPos = oldPos.clone();
   newPos.x += vel.x * dt;
   newPos.y += vel.y * dt;
   newPos.z += vel.z * dt;
 
-  // Collide
   const resolved = moveAndCollide(oldPos, newPos);
   camera.position.copy(resolved);
 
-  // Coyote
   if (onGround) coyoteTimer = 0.08;
   else coyoteTimer -= dt;
 
-  // Fall kill
   if (camera.position.y < -40) takeDamage(999, null);
 
-  // Auto-fire
   if (mouseDown && lastShot >= FIRE_RATE && controls.isLocked) shoot();
 
-  // Head bob
   const moving = (Math.abs(vel.x) + Math.abs(vel.z)) > 0.6 && onGround;
   if (moving) bobT += dt * 10;
   else bobT *= 0.88;
@@ -1110,7 +1149,6 @@ function updatePhysics(dt) {
   gunGroup.position.y = -0.2 + Math.sin(bobT) * 0.012 + slideOffset;
   gunGroup.position.x = 0.22 + Math.sin(bobT * 0.5) * 0.005;
 
-  // Recoil
   if (recoilZ > 0) {
     gunGroup.position.z = -0.42 + recoilZ * 0.1;
     recoilZ *= 0.55;
@@ -1123,7 +1161,7 @@ function updatePhysics(dt) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  AIMBOT
+//  AIMBOT  (Fixed to use controls._euler directly)
 // ═══════════════════════════════════════════════════════════
 function angleDiff(a, b) {
   let d = a - b;
@@ -1134,6 +1172,7 @@ function angleDiff(a, b) {
 
 function runAimbot(dt) {
   if (!cheats.aimbot || S.phase !== 'playing' || !controls.isLocked) return;
+  if (!controls._euler) return;
 
   let bestTarget = null;
   let bestScore = Infinity;
@@ -1164,8 +1203,13 @@ function runAimbot(dt) {
     const targetPitch = -Math.asin(Math.max(-1, Math.min(1, targetDir.y)));
 
     const smooth = cheats.aimbotSmooth / 100;
-    camera.rotation.y += angleDiff(targetYaw, camera.rotation.y) * smooth;
-    camera.rotation.x += (targetPitch - camera.rotation.x) * smooth;
+    const euler = controls._euler;
+
+    euler.y += angleDiff(targetYaw, euler.y) * smooth;
+    euler.x += (targetPitch - euler.x) * smooth;
+    euler.x = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, euler.x));
+
+    camera.quaternion.setFromEuler(euler);
   }
 }
 
@@ -1318,7 +1362,6 @@ function drawESP() {
   espCtx.clearRect(0, 0, espCanvas.width, espCanvas.height);
   if (!cheats.esp || S.phase !== 'playing') return;
 
-  // Aimbot FOV circle
   if (cheats.aimbot) {
     const r = (cheats.aimbotFOV / 180) * espCanvas.height * 0.5;
     espCtx.strokeStyle = 'rgba(255,68,0,0.3)';
@@ -1377,7 +1420,6 @@ function drawESP() {
       espCtx.font = 'bold 12px Orbitron, monospace';
       espCtx.textAlign = 'center';
       espCtx.fillText(rp.name.toUpperCase(), x1, top - 8);
-      // HP bar
       const hpPct = Math.max(0, rp.health) / 100;
       espCtx.fillStyle = 'rgba(0,0,0,0.6)';
       espCtx.fillRect(left, top - 22, w, 6);
@@ -1438,7 +1480,6 @@ function makePlayerMesh(name, color=0xff4400) {
   const hb = new THREE.Mesh(new THREE.BoxGeometry(.7,1.9,.7), new THREE.MeshBasicMaterial({ visible:false }));
   hb.name = 'hitbox'; hb.position.y = .95; g.add(hb);
 
-  // Nametag sprite
   const cv = document.createElement('canvas'); cv.width=256; cv.height=64;
   const cx = cv.getContext('2d');
   cx.fillStyle = 'rgba(0,0,0,.65)'; cx.fillRect(0,0,256,64);
@@ -1447,7 +1488,6 @@ function makePlayerMesh(name, color=0xff4400) {
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map:new THREE.CanvasTexture(cv), transparent:true }));
   sp.name = 'nametag'; sp.scale.set(2.2,.55,1); sp.position.y = 2.3; g.add(sp);
 
-  // Remote muzzle light
   const mLight = new THREE.PointLight(0xffaa00, 0, 4);
   mLight.name = 'muzzle'; mLight.position.set(0,.9,.4); g.add(mLight);
 
@@ -1475,7 +1515,6 @@ function updateRemotes(dt) {
     rp.group.position.lerp(rp.targetPos, Math.min(1, dt*20));
     rp.group.rotation.y += angleDiff(rp.targetRotY, rp.group.rotation.y) * Math.min(1, dt*10);
 
-    // Animation
     const speed = rp.targetPos.distanceTo(rp.group.position) / dt;
     rp.animT += dt * Math.min(speed * 2, 12);
     const legL = rp.group.getObjectByName('legL');
@@ -1488,11 +1527,9 @@ function updateRemotes(dt) {
       armL.rotation.x = Math.sin(rp.animT + Math.PI) * 0.5;
       armR.rotation.x = Math.sin(rp.animT) * 0.5;
     }
-    // Nametag face camera
     const tag = rp.group.getObjectByName('nametag');
     if (tag) tag.material.rotation = 0;
 
-    // Muzzle light decay
     const muzzle = rp.group.getObjectByName('muzzle');
     if (muzzle && muzzle.intensity > 0) muzzle.intensity *= 0.7;
   });
@@ -1509,7 +1546,6 @@ function updatePlayerCount() {
 let dmgTimeout = null;
 function takeDamage(amount, fromId) {
   if (S.phase !== 'playing') return;
-  if (cheats.god) return;
   S.health = Math.max(0, S.health - amount);
   updateHUD();
 
@@ -1518,7 +1554,6 @@ function takeDamage(amount, fromId) {
   clearTimeout(dmgTimeout);
   dmgTimeout = setTimeout(()=>v.style.boxShadow='', 250);
 
-  // Damage direction
   if (fromId && remotePlayers.has(fromId)) {
     const rp = remotePlayers.get(fromId);
     const dir = new THREE.Vector3();
@@ -1559,7 +1594,7 @@ function respawn() {
   S.phase = 'playing';
   document.getElementById('deathScreen').style.display = 'none';
   document.getElementById('hud').style.display = 'block';
-  updateHUD();
+  updateHUD(); updatePlayerCount();
   controls.lock();
   net.send({ type:'respawn', id:S.myId, pos:sp.toArray() });
 }
@@ -1680,6 +1715,7 @@ function handleMsg(data) {
 function setupHostConn(conn) {
   connections.set(conn.peer, conn);
   updateStatus(`${connections.size} player(s) in lobby`);
+  advertiseLobby();
   conn.on('open', () => {
     const players = [];
     remotePlayers.forEach((rp,id) => players.push({ id, name:rp.name, pos:rp.group.position.toArray() }));
@@ -1687,6 +1723,7 @@ function setupHostConn(conn) {
     conn.send({ type:'welcome', players, from:S.myId });
     if (S.gameStarted) conn.send({ type:'game_start', from:S.myId });
     net.broadcast({ type:'player_join', id:conn.peer, name:conn.peer.substring(0,6), pos:[0,1.7,0], from:S.myId }, conn.peer);
+    advertiseLobby();
   });
   conn.on('data', data => { handleMsg(data); net.broadcast(data, conn.peer); });
   conn.on('close', () => {
@@ -1694,18 +1731,24 @@ function setupHostConn(conn) {
     removeRemote(conn.peer);
     net.broadcast({ type:'player_leave', id:conn.peer, from:S.myId });
     updateStatus(`${connections.size} player(s) in lobby`);
+    advertiseLobby();
   });
   conn.on('error', err => console.warn('conn error', err));
 }
 
 function initAsHost() {
+  S.myName = getPlayerName();
   updateStatus('Creating room…');
   peer = new Peer();
   peer.on('open', id => {
-    S.myId   = id; S.myName = id.substring(0,6).toUpperCase(); S.isHost = true;
+    S.myId   = id; S.isHost = true;
+    if (!S.myName) S.myName = id.substring(0,6).toUpperCase();
     document.getElementById('codeDisplay').textContent = id;
     document.getElementById('roomCode').style.display  = 'flex';
     document.getElementById('startBtn').style.display  = 'block';
+    document.getElementById('lobbyList').style.display = 'none';
+    advertiseLobby();
+    setInterval(advertiseLobby, 3000);
     updateStatus('Share the room code and click START');
   });
   peer.on('connection', conn => setupHostConn(conn));
@@ -1713,10 +1756,12 @@ function initAsHost() {
 }
 
 function initAsClient(roomCode) {
+  S.myName = getPlayerName();
   updateStatus('Connecting…');
   peer = new Peer();
   peer.on('open', id => {
-    S.myId   = id; S.myName = id.substring(0,6).toUpperCase(); S.isHost = false;
+    S.myId   = id; S.isHost = false;
+    if (!S.myName) S.myName = id.substring(0,6).toUpperCase();
     const conn = peer.connect(roomCode.trim(), { reliable:true });
     hostConn  = conn;
     conn.on('open', () => {
@@ -1731,6 +1776,100 @@ function initAsClient(roomCode) {
 }
 
 function updateStatus(msg) { document.getElementById('status').textContent = msg; }
+
+// ═══════════════════════════════════════════════════════════
+//  LOBBY BROWSER (BroadcastChannel + localStorage)
+// ═══════════════════════════════════════════════════════════
+const LOBBY_CHANNEL = 'chaos-lobby-v1';
+let lobbyChannel = null;
+if (typeof BroadcastChannel !== 'undefined') {
+  lobbyChannel = new BroadcastChannel(LOBBY_CHANNEL);
+  lobbyChannel.onmessage = (e) => handleLobbyMessage(e.data);
+}
+
+function handleLobbyMessage(data) {
+  if (data.action === 'update') {
+    localStorage.setItem('chaos_lobby_' + data.lobby.id, JSON.stringify(data.lobby));
+    renderLobbyList();
+  } else if (data.action === 'remove') {
+    localStorage.removeItem('chaos_lobby_' + data.lobbyId);
+    renderLobbyList();
+  }
+}
+
+function advertiseLobby() {
+  if (!S.isHost || !S.myId) return;
+  const playerNames = [S.myName];
+  connections.forEach((conn, id) => playerNames.push(id.substring(0,6)));
+  const lobby = {
+    id: S.myId,
+    hostName: S.myName,
+    playerCount: connections.size + 1,
+    players: playerNames.slice(0, 4),
+    maxPlayers: 8,
+    timestamp: Date.now()
+  };
+  localStorage.setItem('chaos_lobby_' + S.myId, JSON.stringify(lobby));
+  if (lobbyChannel) lobbyChannel.postMessage({ action: 'update', lobby });
+}
+
+function removeLobbyAd() {
+  if (!S.myId) return;
+  localStorage.removeItem('chaos_lobby_' + S.myId);
+  if (lobbyChannel) lobbyChannel.postMessage({ action: 'remove', lobbyId: S.myId });
+}
+
+function renderLobbyList() {
+  const body = document.getElementById('lobbyListBody');
+  body.innerHTML = '';
+  let count = 0;
+  const now = Date.now();
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key || !key.startsWith('chaos_lobby_')) continue;
+    try {
+      const lobby = JSON.parse(localStorage.getItem(key));
+      if (!lobby || now - lobby.timestamp > 60000) {
+        localStorage.removeItem(key);
+        continue;
+      }
+      if (lobby.id === S.myId) continue;
+      count++;
+      const row = document.createElement('div');
+      row.className = 'lobby-row';
+      const namesStr = (lobby.players || [lobby.hostName]).slice(0,3).join(', ') + (lobby.playerCount > 3 ? ` +${lobby.playerCount-3} more` : '');
+      row.innerHTML = `
+        <div class="lobby-info">
+          <span class="lobby-title">${escapeHtml(lobby.hostName || 'Unknown')}'s Game</span>
+          <span class="lobby-meta">${lobby.playerCount || 1} / ${lobby.maxPlayers || 8} PLAYERS</span>
+          <span class="lobby-players">${escapeHtml(namesStr)}</span>
+        </div>
+        <span class="lobby-join">JOIN →</span>
+      `;
+      row.onclick = () => {
+        document.getElementById('roomInput').value = lobby.id;
+        initAsClient(lobby.id);
+      };
+      body.appendChild(row);
+    } catch(e) { localStorage.removeItem(key); }
+  }
+  document.getElementById('lobbyList').style.display = count > 0 ? 'block' : 'none';
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function getPlayerName() {
+  const el = document.getElementById('nameInput');
+  let name = el.value.trim();
+  if (!name) name = 'Player' + Math.floor(Math.random() * 1000);
+  return name.substring(0, 16);
+}
+
+window.addEventListener('beforeunload', () => removeLobbyAd());
 
 // ═══════════════════════════════════════════════════════════
 //  GAME START
@@ -1751,6 +1890,49 @@ function startGame() {
 }
 
 // ═══════════════════════════════════════════════════════════
+//  PAUSE / RETURN TO LOBBY
+// ═══════════════════════════════════════════════════════════
+function togglePause() {
+  if (S.phase !== 'playing') return;
+  isPaused = !isPaused;
+  const menu = document.getElementById('pauseMenu');
+  if (isPaused) {
+    menu.style.display = 'flex';
+    controls.unlock();
+  } else {
+    menu.style.display = 'none';
+    if (document.getElementById('cheatMenu').style.display !== 'block') {
+      controls.lock();
+    }
+  }
+}
+
+function returnToLobby() {
+  isPaused = false;
+  S.phase = 'lobby';
+  S.gameStarted = false;
+  S.health = 100; S.ammo = 30; S.reserveAmmo = 90; S.kills = 0; S.deaths = 0;
+  document.getElementById('pauseMenu').style.display = 'none';
+  document.getElementById('hud').style.display = 'none';
+  document.getElementById('deathScreen').style.display = 'none';
+  document.getElementById('lobby').style.display = 'flex';
+  document.getElementById('roomCode').style.display = 'none';
+  document.getElementById('startBtn').style.display = 'none';
+  document.getElementById('status').textContent = '';
+  document.getElementById('lobbyList').style.display = 'block';
+  if (peer) { peer.destroy(); peer = null; }
+  connections.clear(); hostConn = null;
+  remotePlayers.forEach(rp => scene.remove(rp.group));
+  remotePlayers.clear();
+  camera.position.set(0, 1.7, 0);
+  camera.rotation.set(0, 0, 0);
+  if (controls._euler) controls._euler.set(0, 0, 0, 'YXZ');
+  vel.set(0, 0, 0);
+  removeLobbyAd();
+  renderLobbyList();
+}
+
+// ═══════════════════════════════════════════════════════════
 //  LOBBY WIRING
 // ═══════════════════════════════════════════════════════════
 document.getElementById('hostBtn').addEventListener('click', initAsHost);
@@ -1768,10 +1950,24 @@ document.getElementById('copyBtn')?.addEventListener('click', () => {
   document.getElementById('copyBtn').textContent = 'COPIED!';
   setTimeout(()=>document.getElementById('copyBtn').textContent='COPY', 2000);
 });
+document.getElementById('refreshLobbies').addEventListener('click', renderLobbyList);
+
+document.getElementById('resumeBtn').addEventListener('click', () => {
+  isPaused = false;
+  document.getElementById('pauseMenu').style.display = 'none';
+  controls.lock();
+});
+document.getElementById('pauseCheatBtn').addEventListener('click', () => {
+  document.getElementById('cheatMenu').style.display = 'block';
+});
+document.getElementById('leaveBtn').addEventListener('click', returnToLobby);
+document.getElementById('quitBtn').addEventListener('click', () => location.reload());
 
 document.addEventListener('keydown', e => {
   if (e.code==='F1' && S.phase==='lobby') {
-    S.myId = 'LOCAL'; S.myName = 'LOCAL'; S.isHost = true; S.gameStarted = false;
+    S.myName = getPlayerName();
+    if (!S.myName) S.myName = 'LOCAL';
+    S.myId = 'LOCAL'; S.isHost = true; S.gameStarted = false;
     startGame();
   }
 });
@@ -1807,10 +2003,12 @@ let frame = 0;
 })();
 
 // ═══════════════════════════════════════════════════════════
-//  TIPS
+//  INIT
 // ═══════════════════════════════════════════════════════════
+renderLobbyList();
+
 console.log('%c CHAOS — Desert Arena ', 'background:#ffaa00;color:#000;font-size:16px;font-weight:bold;padding:4px 8px;');
-console.log('%c F1 = Solo Play | RIGHT SHIFT = Cheat Menu ', 'color:#ffaa33;');
+console.log('%c F1 = Solo Play | RIGHT SHIFT = Cheat Menu | ESC = Pause ', 'color:#ffaa33;');
 console.log('%c WASD move | SPACE jump | SHIFT dash | C slide | CLICK shoot | R reload | TAB scoreboard ', 'color:#aaa;');
 </script>
 </body>
